@@ -4,7 +4,7 @@ require 'rubygems'
 require 'hoe'
 require './lib/shoulda.rb'
 
-Hoe.new('shoulda', Shoulda::VERSION) do |p|
+Hoe.new('shoulda', Thoughtbot::Shoulda::VERSION) do |p|
   p.rubyforge_name = 'shoulda'
   p.author = 'Tammer Saleh'
   p.email = 'tsaleh@thoughtbot.com'
