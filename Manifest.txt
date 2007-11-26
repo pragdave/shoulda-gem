@@ -2,7 +2,7 @@ History.txt
 Manifest.txt
 README.txt
 Rakefile
-bin/shoulda
+bin/convert_file_to_shoulda
 lib/shoulda.rb
 lib/proc_extensions.rb
 test/test_shoulda.rb
