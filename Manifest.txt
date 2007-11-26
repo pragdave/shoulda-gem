@@ -1,0 +1,7 @@
+History.txt
+Manifest.txt
+README.txt
+Rakefile
+bin/shoulda
+lib/shoulda.rb
+test/test_shoulda.rb
