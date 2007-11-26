@@ -4,4 +4,5 @@ README.txt
 Rakefile
 bin/shoulda
 lib/shoulda.rb
+lib/proc_extensions.rb
 test/test_shoulda.rb
