@@ -2,6 +2,10 @@ require 'test/unit'
 require 'shoulda'
 
 class ShouldaTest < Test::Unit::TestCase # :nodoc:
+
+  def test_should_be_compatible_with_regular_tests
+    assert true
+  end
   
   context "context with setup block" do
     setup do

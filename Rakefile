@@ -1,17 +1,98 @@
-# -*- ruby -*-
-
 require 'rubygems'
-require 'hoe'
-require './lib/shoulda.rb'
+require 'rake'
+require 'rake/gempackagetask'
+require 'rake/testtask'
+require 'rake/rdoctask'
+require 'rubyforge'
 
-Hoe.new('shoulda', Thoughtbot::Shoulda::VERSION) do |p|
-  p.rubyforge_name = 'shoulda'
-  p.author = 'Tammer Saleh'
-  p.email = 'tsaleh@thoughtbot.com'
-  p.summary = 'Testing library built on top of Test::Unit'
-  p.description = p.paragraphs_of('README.txt', 2..5).join("\n\n")
-  p.url = p.paragraphs_of('README.txt', 0).first.split(/\n/)[1..-1]
-  p.changes = p.paragraphs_of('History.txt', 0..1).join("\n\n")
+require File.join(File.dirname(__FILE__), 'lib', 'shoulda')
+
+def paragraphs_of(path, *paragraphs)
+  File.read(path).delete("\r").split(/\n\n+/).values_at(*paragraphs)
 end
+
+name              = "Shoulda"
+summary           = 'Testing library built on top of Test::Unit'
+author            = 'Tammer Saleh'
+email             = 'tsaleh@thoughtbot.com'
+version           = Thoughtbot::Shoulda::VERSION
+description       = paragraphs_of('README.txt', 2..5).join("\n\n")
+rubyforge_project = 'shoulda'
+bindir            = "bin"
+
+desc 'Update documentation on website'
+task :sync_docs => 'rdoc' do
+  `rsync -ave ssh doc/ tsaleh@rubyforge.org:/var/www/gforge-projects/#{rubyforge_project}`
+end
+
+desc 'Package and upload the release to rubyforge.'
+task :release => [:test, :sync_docs, :package] do |t|
+  pkg = "pkg/#{name}-#{version}"
+  
+  rf = RubyForge.new
+  puts "Logging in"
+  rf.login
+  
+  c = rf.userconfig
+  c["release_notes"]   = description if description
+  c["release_changes"] = changes if changes
+  c["preformatted"] = true
+  
+  files = ["#{pkg}.tgz", "#{pkg}.gem"]
+  
+  puts "Releasing #{name} v. #{version}"
+  rf.add_release rubyforge_name, name, version, *files
+end
+
+desc 'Default: run tests.'
+task :default => ['test']
+
+Dir['tasks/*.rake'].each do |f|
+  load f
+end
+
+spec = Gem::Specification.new do |s|
+  s.name              = name
+  s.summary           = summary
+  s.author            = author
+  s.email             = email
+  s.version           = version
+  s.rubyforge_project = rubyforge_project
+  s.bindir            = bindir
+  s.description       = description
+  
+  url = paragraphs_of('README.txt', 0).first.split(/\n/)[1..-1]
+  s.homepage = Array(url).first
+  s.files = File.read("Manifest.txt").delete("\r").split(/\n/)
+  s.executables = s.files.grep(/^bin/) { |f| File.basename(f) }
+
+  dirs = Dir['{lib,ext}']
+  s.require_paths = dirs unless dirs.empty?
+
+  s.rdoc_options = ['--main', 'README.txt']
+  s.extra_rdoc_files = s.files.grep(/txt$/)
+  s.has_rdoc = true
+
+  s.test_files = Dir[*['test/**/test_*.rb']]
+end
+
+Rake::GemPackageTask.new spec do |pkg|
+  pkg.need_tar = true
+end
+
+Rake::TestTask.new do |t|
+  t.libs << 'lib'
+  t.pattern = 'test/**/test_*.rb'
+  t.verbose = false
+end
+
+Rake::RDocTask.new { |rdoc|
+  rdoc.rdoc_dir = 'doc'
+  rdoc.title    = "Shoulda -- Making tests easy on the fingers and eyes"
+  rdoc.options << '--line-numbers' << '--inline-source'
+  rdoc.template = "#{ENV['template']}.rb" if ENV['template']
+  rdoc.rdoc_files.include('README.txt', 'lib/**/*.rb')
+}
+
 
 # vim: syntax=Ruby
