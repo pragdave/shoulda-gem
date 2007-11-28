@@ -27,21 +27,23 @@ end
 
 desc 'Package and upload the release to rubyforge.'
 task :release => [:test, :sync_docs, :package] do |t|
+  puts "Releasing #{name} v#{version} to Rubyforge"
   pkg = "pkg/#{name}-#{version}"
   
   rf = RubyForge.new
-  puts "Logging in"
-  rf.login
-  
+
   c = rf.userconfig
   c["release_notes"]   = description if description
-  c["release_changes"] = changes if changes
+  # c["release_changes"] = changes if changes
   c["preformatted"] = true
   
+  puts "  Logging in..."
+  rf.login
+    
   files = ["#{pkg}.tgz", "#{pkg}.gem"]
   
-  puts "Releasing #{name} v. #{version}"
-  rf.add_release rubyforge_name, name, version, *files
+  puts "  Uploading..."
+  rf.add_release rubyforge_project, name, version, *files
 end
 
 desc 'Default: run tests.'
