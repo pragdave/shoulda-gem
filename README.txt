@@ -4,7 +4,9 @@ Shoulda
 
 == DESCRIPTION:
   
-The Shoulda gem makes it easy to write elegant, understandable, and maintainable tests. Shoulda consists of test macros, assertions, and helpers added on to the Test::Unit framework. It's fully compatible with your existing tests, and requires no retooling to use.  Should also comes with a complimentary Rails plugin, available here - http://thoughtbot.com/projects/shoulda
+The Shoulda gem makes it easy to write elegant, understandable, and maintainable tests. Shoulda consists of test macros, assertions, and helpers added on to the Test::Unit framework. It's fully compatible with your existing tests, and requires no retooling to use.  This is the stripped down Shoulda Gem.  There is also a complimentary Rails plugin, available here - http://thoughtbot.com/projects/shoulda, which includes many rails specific macros and helpers.  
+
+=== If you install the plugin, you do not have to install this gem.
 
 == FEATURES/PROBLEMS:
   
