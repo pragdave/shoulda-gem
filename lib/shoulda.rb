@@ -1,62 +1,19 @@
 require File.join(File.dirname(__FILE__), 'proc_extensions')
 
 module Thoughtbot
-  module Shoulda
-
-    VERSION = '1.1.0'
-
-    # = Should statements
-    #
-    # Should statements are just syntactic sugar over normal Test::Unit test methods.  A should block 
-    # contains all the normal code and assertions you're used to seeing, with the added benefit that 
-    # they can be wrapped inside context blocks (see below).
-    #
-    # == Example:
-    #
-    #  class UserTest << Test::Unit::TestCase
-    #    
-    #    def setup
-    #      @user = User.new("John", "Doe")
-    #    end
-    #
-    #    should "return its full name"
-    #      assert_equal 'John Doe', @user.full_name
-    #    end
-    #  
-    #  end
-    #   
-    # ...will produce the following test:
-    # * <tt>"test: User should return its full name. "</tt>
-    #
-    # Note: The part before <tt>should</tt> in the test name is gleamed from the name of the Test::Unit class.
-
-    def should(name, &blk)
-      context_name = self.name.gsub(/Test/, "")
-      context = Thoughtbot::Shoulda::Context.new(context_name, self) do
-        should(name, &blk)
-      end
-      context.build
-    end
-
-    # Just like should, but never runs, and instead prints an 'X' in the Test::Unit output.
-    def should_eventually(name, &blk)
-      context_name = self.class.name.gsub(/Test/, "")
-      context = Thoughtbot::Shoulda::Context.new(context_name, self) do
-        should_eventually(name, &blk)
-      end
-      context.build
-    end
-
-    # = Contexts
+  class Shoulda
+    VERSION = '1.0.0'
+  
+    # = context and should blocks
     # 
-    # A context block groups should statements under a common set of setup/teardown methods.  
+    # A context block groups should statements under a common setup/teardown method.  
     # Context blocks can be arbitrarily nested, and can do wonders for improving the maintainability
     # and readability of your test code.
     #
     # A context block can contain setup, should, should_eventually, and teardown blocks.
     #
     #  class UserTest << Test::Unit::TestCase
-    #    context "A User instance" do
+    #    context "a User instance" do
     #      setup do
     #        @user = User.find(:first)
     #      end
@@ -67,13 +24,13 @@ module Thoughtbot
     #    end
     #  end
     #
-    # This code will produce the method <tt>"test: A User instance should return its full name. "</tt>.
+    # This code will produce the method <tt>"test a User instance should return its full name"</tt>.
     #
-    # Contexts may be nested.  Nested contexts run their setup blocks from out to in before each 
-    # should statement.  They then run their teardown blocks from in to out after each should statement.
+    # Contexts may be nested.  Nested contexts run their setup blocks from out to in before each test.  
+    # They then run their teardown blocks from in to out after each test.
     #
     #  class UserTest << Test::Unit::TestCase
-    #    context "A User instance" do
+    #    context "a User instance" do
     #      setup do
     #        @user = User.find(:first)
     #      end
@@ -95,118 +52,104 @@ module Thoughtbot
     #  end
     #
     # This code will produce the following methods 
-    # * <tt>"test: A User instance should return its full name. "</tt>
-    # * <tt>"test: A User instance with a profile should return true when sent :has_profile?. "</tt>
+    # * <tt>"test: a User instance should return its full name."</tt>
+    # * <tt>"test: a User instance with a profile should return true when sent :has_profile?."</tt>
     #
-    # <b>Just like should statements, a context block can exist next to normal <tt>def test_the_old_way; end</tt> 
-    # tests</b>.  This means you do not have to fully commit to the context/should syntax in a test file.
+    # <b>A context block can exist next to normal <tt>def test_the_old_way; end</tt> tests</b>, 
+    # meaning you do not have to fully commit to the context/should syntax in a test file.
+    #
 
-    def context(name, &blk)
-      context = Thoughtbot::Shoulda::Context.new(name, self, &blk)
-      context.build
-    end
-
-    class Context # :nodoc:
-
-      attr_accessor :name               # my name
-      attr_accessor :parent             # may be another context, or the original test::unit class.
-      attr_accessor :subcontexts        # array of contexts nested under myself
-      attr_accessor :setup_block        # block given via a setup method
-      attr_accessor :teardown_block     # block given via a teardown method
-      attr_accessor :shoulds            # array of hashes representing the should statements
-      attr_accessor :should_eventuallys # array of hashes representing the should eventually statements
-
-      def initialize(name, parent = nil, &blk)
-        self.name               = name
-        self.parent             = parent
-        self.setup_block        = nil
-        self.teardown_block     = nil
-        self.shoulds            = []
-        self.should_eventuallys = []
-        self.subcontexts        = []
-
-        blk.bind(self).call
+    module ClassMethods
+      def self.included(other) # :nodoc:
+        @@context_names   = []
+        @@setup_blocks    = []
+        @@teardown_blocks = []
       end
+  
+      # Defines a test method.  Can be called either inside our outside of a context.
+      # Optionally specify <tt>:unimplimented => true</tt> (see should_eventually).
+      #
+      # Example:
+      #
+      #   class UserTest << Test::Unit::TestCase 
+      #     should "return first user on find(:first)"
+      #       assert_equal users(:first), User.find(:first)
+      #     end
+      #   end
+      #
+      # Would create a test named
+      #   'test: should return first user on find(:first)'
+      #
+      def should(name, opts = {}, &should_block)
+        test_name = ["test:", @@context_names, "should", "#{name}. "].flatten.join(' ').to_sym
 
-      def context(name, &blk)
-        subcontexts << Context.new(name, self, &blk)
-      end
-
-      def setup(&blk)
-        self.setup_block = blk
-      end
-
-      def teardown(&blk)
-        self.teardown_block = blk
-      end
-
-      def should(name, &blk)
-        self.shoulds << { :name => name, :block => blk }
-      end
-
-      def should_eventually(name, &blk)
-        self.should_eventuallys << { :name => name, :block => blk }
-      end
-
-      def full_name
-        parent_name = am_subcontext? ? parent.full_name : ""
-        return [parent_name, name].join(" ").strip
-      end
-
-      def am_subcontext?
-        parent.is_a?(self.class) # my parent is the same class as myself.
-      end
-
-      def test_unit_class
-        am_subcontext? ? parent.test_unit_class : parent
-      end
-
-      def create_test_from_should_hash(should)
-        test_name = ["test:", self.full_name, "should", "#{should[:name]}. "].flatten.join(' ').to_sym
-
-        if test_unit_class.instance_methods.include?(test_name.to_s)
-          raise ArgumentError, "'#{test_name}' is already defined" 
-        end
-        
-        context = self
-        test_unit_class.send(:define_method, test_name) do |*args|
-          begin
-            context.run_all_setup_blocks(self)
-            should[:block].bind(self).call
-          ensure
-            context.run_all_teardown_blocks(self)
+        name_defined = eval("self.instance_methods.include?('#{test_name.to_s.gsub(/['"]/, '\$1')}')", should_block.binding)
+        raise ArgumentError, "'#{test_name}' is already defined" and return if name_defined
+    
+        setup_blocks    = @@setup_blocks.dup
+        teardown_blocks = @@teardown_blocks.dup
+    
+        if opts[:unimplemented]
+          define_method test_name do |*args|
+            # XXX find a better way of doing this.
+            assert true
+        	  STDOUT.putc "X" # Tests for this model are missing.
+          end    		
+        else
+          define_method test_name do |*args|
+            begin
+              setup_blocks.each {|b| b.bind(self).call }
+              should_block.bind(self).call(*args)
+            ensure
+              teardown_blocks.reverse.each {|b| b.bind(self).call }
+            end
           end
         end
       end
 
-      def run_all_setup_blocks(binding)
-        self.parent.run_all_setup_blocks(binding) if am_subcontext?
-        setup_block.bind(binding).call if setup_block
+      # Creates a context block with the given name.
+      def context(name, &context_block)
+        saved_setups    = @@setup_blocks.dup
+        saved_teardowns = @@teardown_blocks.dup      
+        saved_contexts  = @@context_names.dup
+
+        @@setup_defined = false
+      
+        @@context_names << name
+        context_block.bind(self).call
+
+        @@context_names   = saved_contexts      
+        @@setup_blocks    = saved_setups
+        @@teardown_blocks = saved_teardowns
       end
 
-      def run_all_teardown_blocks(binding)
-        teardown_block.bind(binding).call if teardown_block
-        self.parent.run_all_teardown_blocks(binding) if am_subcontext?
-      end
-
-      def print_should_eventuallys
-        puts "The following tests for #{full_name} were differed:" unless should_eventuallys.empty?
-        should_eventuallys.each do |should|
-          puts "  * " + should[:name]
+      # Run before every should block in the current context.
+      # If a setup block appears in a nested context, it will be run after the setup blocks
+      # in the parent contexts.
+      def setup(&setup_block)
+        if @@setup_defined
+          raise RuntimeError, "Either you have two setup blocks in one context, " + 
+                              "or a setup block outside of a context.  Both are equally bad."
         end
-        subcontexts.each { |context| context.print_should_eventuallys }
+        @@setup_defined = true
+      
+        @@setup_blocks << setup_block
       end
 
-      def build
-        shoulds.each do |should|
-          create_test_from_should_hash(should)
-        end
-
-        subcontexts.each { |context| context.build }
-
-        print_should_eventuallys
+      # Run after every should block in the current context.
+      # If a teardown block appears in a nested context, it will be run before the teardown 
+      # blocks in the parent contexts.
+      def teardown(&teardown_block)
+        @@teardown_blocks << teardown_block
       end
 
+      # Defines a specification that is not yet implemented.  
+      # Will be displayed as an 'X' when running tests, and failures will not be shown.
+      # This is equivalent to:
+      #   should(name, {:unimplemented => true}, &block)
+      def should_eventually(name, &block)
+        should("eventually #{name}", {:unimplemented => true}, &block)
+      end
     end
   end
 end
@@ -214,8 +157,9 @@ end
 module Test # :nodoc: all
   module Unit 
     class TestCase
-      extend Thoughtbot::Shoulda
+      class << self
+        include Thoughtbot::Shoulda::ClassMethods
+      end
     end
   end
 end
-
