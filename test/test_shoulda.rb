@@ -9,12 +9,40 @@ class TestShoulda < Test::Unit::TestCase # :nodoc:
     assert true
   end
   
-  context "Inside a context" do
-    should "be able to define a should statement" do
+  should "see the name of my class as TestShoulda" do
+    assert_equal "TestShoulda", self.class.name
+  end
+  
+  def self.should_see_class_methods
+    should "be able to see class methods" do
       assert true
     end
   end
+
+  def self.should_see_a_context_block_like_a_Test_Unit_class
+    @@class_name = self.name
+    should "see a context block as a Test::Unit class" do
+      assert_equal "TestShoulda", @@class_name
+    end
+  end
   
+  context "Context" do
+    should_see_class_methods
+    should_see_a_context_block_like_a_Test_Unit_class
+
+    should "not define @blah" do
+      assert ! self.instance_variables.include?("@blah")
+    end
+
+    should "be able to define a should statement" do
+      assert true
+    end
+
+    should "see the name of my class as TestShoulda" do
+      assert_equal "TestShoulda", self.class.name
+    end
+  end
+
   context "Context with setup block" do
     setup do
       @blah = "blah"
@@ -64,12 +92,6 @@ class TestShoulda < Test::Unit::TestCase # :nodoc:
   #    assert_equal "hi", hello
   #  end
   #end
-  
-  context "Another context without setup" do
-    should "not define @blah" do
-      assert ! self.instance_variables.include?("@blah")
-    end
-  end
   
   should_eventually "pass, since it's a should_eventually" do
     flunk "what?"
