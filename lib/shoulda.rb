@@ -6,7 +6,7 @@ module Thoughtbot
       attr_accessor :current_context
     end
 
-    VERSION = '1.1.0'
+    VERSION = '1.1.1'
 
     # = Should statements
     #
